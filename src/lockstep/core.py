@@ -37,10 +37,14 @@ class Violation:
     commits: tuple[Commit, ...]
     changed: tuple[str, ...]  # the trigger paths that actually changed
     answered_in_range: bool = False
+    # What was actually looked at. Not inferrable from len(commits): a squashed
+    # run can turn up exactly one culprit, and saying "nothing changed in this
+    # commit" there would describe a check we did not run.
+    squash: bool = False
 
     def describe(self) -> str:
         listed = ", ".join(self.changed)
-        where = "in this range" if len(self.commits) != 1 else "in this commit"
+        where = "in this range" if self.squash else "in this commit"
         return (
             f"changed: {listed}\n"
             f"but nothing matching '{self.rule.required.text}' changed {where}"
@@ -106,7 +110,9 @@ def _check_squashed(commits: list[Commit], rules: list[Rule]) -> list[Violation]
             commit for commit in commits if rule.trigger.select(commit.paths)
         )
         violations.append(
-            Violation(rule=rule, commits=culprits, changed=tuple(changed))
+            Violation(
+                rule=rule, commits=culprits, changed=tuple(changed), squash=True
+            )
         )
     return violations
 

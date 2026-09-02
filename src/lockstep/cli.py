@@ -106,8 +106,14 @@ def _plural(n: int, word: str) -> str:
     return f"{n} {word}" if n == 1 else f"{n} {word}s"
 
 
-def _collect_rules(args, root: str) -> tuple[list[Rule], str]:
-    """Gather rules from the file and the command line, or raise RuleError."""
+def _collect_rules(args, root: str) -> tuple[list[Rule], list[str]]:
+    """Gather rules from the file and the command line, or raise RuleError.
+
+    Returns the rules and the places they were read from. The sources are
+    returned even when they yielded nothing, because "the rules file is all
+    comments" and "there is no rules file" need different messages and the
+    caller cannot tell them apart from an empty rule list.
+    """
     rules: list[Rule] = []
     sources: list[str] = []
 
@@ -139,13 +145,14 @@ def _collect_rules(args, root: str) -> tuple[list[Rule], str]:
     if args.rule:
         sources.append(CLI_SOURCE)
 
-    return rules, " + ".join(sources) if sources else CLI_SOURCE
+    return rules, sources
 
 
-def _no_rules_message(args, root: str) -> list[str]:
-    if args.rules or args.rule:
+def _no_rules_message(sources: list[str], root: str) -> list[str]:
+    if sources:
         return [
-            "lockstep: no rules found — every line was blank or a comment.",
+            f"lockstep: no rules found in {' + '.join(sources)} — every line "
+            "was blank or a comment.",
             "  Nothing was checked.",
         ]
     return [
@@ -268,15 +275,17 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_ERROR
 
     try:
-        rules, source = _collect_rules(args, root)
+        rules, sources = _collect_rules(args, root)
     except RuleError as exc:
         print(f"lockstep: {exc.where()}: {exc.message}", file=sys.stderr)
         return EXIT_ERROR
 
     if not rules:
-        for line in _no_rules_message(args, root):
+        for line in _no_rules_message(sources, root):
             print(line, file=sys.stderr)
         return EXIT_ERROR
+
+    source = " + ".join(sources)
 
     if args.list:
         if not args.quiet:

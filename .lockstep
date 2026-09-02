@@ -1,0 +1,10 @@
+# lockstep's own rules. Kept short on purpose: a rules file nobody believes
+# gets --squash'd into meaninglessness within a month.
+
+# Every flag is documented in the README's options table. If the argument
+# parser moves, the README moves with it.
+src/lockstep/cli.py => README.md
+
+# The glob table in the README is the spec for this file, and it is the only
+# place the semantics are written down for someone who isn't reading Python.
+src/lockstep/rules.py => README.md
